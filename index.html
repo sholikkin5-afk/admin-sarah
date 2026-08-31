@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#1976d2">
+<link rel="manifest" href="manifest-admin.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Admin SARAHmart</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+body{font-family:'Segoe UI';background:#f0f7ff;padding:15px}
+.container{max-width:1000px;margin:auto;background:white;padding:20px;border-radius:15px;box-shadow:0 4px 12px rgba(25,118,210,0.1)}
+h2{background:linear-gradient(135deg, #1976d2 0%, #00c853 100%);color:white;padding:14px;border-radius:10px;text-align:center}
+input,textarea,button,select{width:100%;padding:12px;margin:8px 0;border:2px solid #e3f2fd;border-radius:8px;font-size:14px}
+input:focus,textarea:focus,select:focus{outline:none;border-color:#00c853}
+button{background:linear-gradient(135deg, #1976d2 0%, #00c853 100%);color:white;font-weight:bold;cursor:pointer;border:none;transition:0.2s}
+button:active{transform:scale(0.97)}
+.btn-edit{background:linear-gradient(135deg, #1976d2 0%, #42a5f5 100%)}
+.btn-hapus{background:linear-gradient(135deg, #d32f2f 0%, #f44336 100%)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.item-admin{position:relative;display:flex;flex-direction:column;align-items:center;padding:10px;border:2px solid #e3f2fd;border-radius:12px;margin:8px 0;text-align:center;font-size:12px;background:white}
+.item-admin img{width:100%;max-width:100px;height:100px;object-fit:cover;border-radius:10px;background:#eee}
+#admin-panel{display:none}
+.notif{position:fixed;top:20px;left:50%;transform:translateX(-50%);padding:15px 25px;border-radius:10px;margin:0;text-align:center;font-weight:bold;display:none;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.2)}
+.notif.sukses{background:#00c853;color:white}.notif.gagal{background:#d32f2f;color:white}
+.badge{font-size:10px;padding:3px 8px;border-radius:20px;color:white;font-weight:bold;position:absolute;top:5px;left:5px;z-index:2}
+.badge-diskon{background:#ff1744}
+.badge-expired{background:#757575}
+.list-grid{display:grid;grid-template-columns:repeat(2, 1fr);gap:12px;padding:0 5px}
+@media(min-width: 600px){.list-grid{grid-template-columns:repeat(3, 1fr);max-width:900px;margin:0 auto}}
+.pagination{display:flex;justify-content:center;gap:10px;margin-top:15px}
+.pagination button{width:auto;padding:10px 18px}
+.stok-merah{color:#d32f2f;font-weight:bold}
+.filter-admin{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:15px}
+.label-kecil{font-size:11px;color:#666;margin-top:-5px;margin-bottom:5px}
+.btn-group-admin{position:absolute;top:5px;right:5px;display:flex;gap:5px;z-index:3}
+.menu-tab{display:flex;gap:10px;margin-bottom:20px;border-bottom:2px solid #e3f2fd}
+.btn-tab{flex:1;padding:12px;border:none;background:#e3f2fd;color:#1976d2;font-weight:bold;border-radius:10px 10px 0 0;cursor:pointer}
+.btn-tab.aktif{background:linear-gradient(135deg, #1976d2 0%, #00c853 100%);color:white}
+.tab-content{display:none}
+.tab-content.aktif{display:block}
+.box-promo{background:#fff3e0;border:2px solid #ff9800;padding:15px;border-radius:12px;margin-bottom:15px}
+.switch{position:relative;display:inline-block;width:60px;height:34px}
+.switch input{opacity:0;width:0;height:0}
+.slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:#ccc;transition:.4s;border-radius:34px}
+.slider:before{position:absolute;content:"";height:26px;width:26px;left:4px;bottom:4px;background-color:white;transition:.4s;border-radius:50%}
+input:checked +.slider{background-color:#00c853}
+input:checked +.slider:before{transform:translateX(26px)}
+</style>
+</head>
+<body>
+<div class="container">
+  <h2>⚙️ Admin SARAHmart</h2>
+  <div id="login-box"><input type="password" id="password" placeholder="Password Admin"><button onclick="login()">Masuk</button></div>
+
+  <div id="admin-panel">
+    <div id="notif" class="notif"></div>
+    <div class="menu-tab">
+      <button class="btn-tab aktif" onclick="gantiTab('produk', this)">📦 Produk</button>
+      <button class="btn-tab" onclick="gantiTab('promo', this)">🎁 Promo Undian</button>
+    </div>
+
+    <div id="tab-produk" class="tab-content aktif">
+      <h3 id="form-title">Tambah Produk</h3>
+      <input type="hidden" id="edit-id">
+      <div class="grid">
+        <input type="text" id="nama" placeholder="Nama Produk" required>
+        <input type="number" id="harga" placeholder="Harga" required>
+      </div>
+      <div class="grid">
+        <input type="number" id="stok" placeholder="Stok" required>
+        <input type="number" id="diskon" placeholder="Diskon % - isi 0 jika tidak ada" value="0">
+      </div>
+      <div class="grid">
+        <div>
+          <input type="date" id="tgl_kadaluarsa">
+          <div class="label-kecil">📅 Tanggal Expired Diskon. Kosongkan jika tidak ada expired</div>
+        </div>
+        <div>
+          <input type="text" id="deskripsi" list="list-kategori" placeholder="Ketik/Pilih Kategori" required>
+          <datalist id="list-kategori"></datalist>
+          <div class="label-kecil">Bisa ketik baru atau pilih dari saran</div>
+        </div>
+      </div>
+      <input type="file" id="gambar" accept="image/*"><small>Kosongkan jika tidak ganti gambar</small>
+      <img id="preview" style="width:100px;display:none;margin-top:5px;border-radius:8px;border:2px solid #e3f2fd">
+      <button onclick="simpanProduk()">💾 Simpan Produk</button>
+      <button id="btn-batal" onclick="batalEdit()" style="display:none;background:#757575">Batal</button>
+      <hr><h3>Daftar Produk</h3>
+
+      <div class="filter-admin">
+        <input type="text" id="cari" placeholder="🔍 Cari nama produk..." onkeyup="filterSemua()">
+        <input type="text" id="filter-kat" list="list-filter-kategori" placeholder="Filter Kategori" onkeyup="filterSemua()">
+        <datalist id="list-filter-kategori"></datalist>
+
+        <!-- FILTER BARU -->
+        <select id="filter-stok" onchange="filterSemua()">
+          <option value="semua">Semua Stok</option>
+          <option value="tipis">⚠️ Stok Tipis ≤ 10</option>
+          <option value="habis">❌ Stok Habis</option>
+        </select>
+        <select id="filter-diskon" onchange="filterSemua()">
+          <option value="semua">Semua Produk</option>
+          <option value="diskon">🏷️ Ada Diskon Aktif</option>
+          <option value="normal">Normal - Tanpa Diskon</option>
+        </select>
+      </div>
+
+      <div id="list-produk" class="list-grid">Loading...</div>
+      <div class="pagination">
+        <button onclick="prevPage()"><<</button>
+        <span id="page-info">Hal 1</span>
+        <button onclick="nextPage()">>></button>
+      </div>
+    </div>
+
+    <div id="tab-promo" class="tab-content">
+      <h3>🎁 Pengaturan Promo Undian</h3>
+      <div class="box-promo">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <b>Status Promo</b>
+          <label class="switch">
+            <input type="checkbox" id="promo_aktif">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="grid">
+          <div>
+            <label>Minimal Belanja</label>
+            <input type="number" id="promo_minimal" placeholder="100000">
+            <div class="label-kecil">Contoh: 100000 = Rp 100.000</div>
+          </div>
+          <div>
+            <label>Tanggal Akhir Promo</label>
+            <input type="date" id="promo_tgl_akhir">
+            <div class="label-kecil">Kosongkan jika tanpa batas</div>
+          </div>
+        </div>
+        <hr style="margin:15px 0;border-color:#ff9800">
+        <label>📸 Upload Foto Hadiah - Bisa Pilih Banyak</label>
+        <input type="file" id="gambar_promo" accept="image/*" multiple>
+        <div id="preview_promo_list" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"></div>
+        <div class="label-kecil">Foto ke-1 = Hadiah Utama. Bisa upload 1-6 foto</div>
+        <button onclick="simpanSettingPromo()">💾 Simpan Pengaturan Promo</button>
+      </div>
+      <div class="box-promo" style="background:#e3f2fd;border-color:#1976d2">
+        <h4>📊 Statistik Kupon Bulan Ini</h4>
+        <p>Total Kupon Dibagikan: <b id="total-kupon-bulan">0</b> Kupon</p>
+        <p>Total Pesanan Ikut Promo: <b id="total-pesanan-promo">0</b> Pesanan</p>
+        <button onclick="loadStatistikPromo()" style="background:#1976d2">🔄 Refresh Data</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://fbxfoorzeojsqnzcmvic.supabase.co'
+const SUPABASE_ANON_KEY = 'sb_publishable_Xg3DLbSsRFTsU5ZjxIylkA_JP6pUpSK'
+const ADMIN_PASSWORD = "sarah123"
+
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+let allProdukAdmin = []; let produkTampil = []; let gambarBaru = null; let gambarPromoBaru = [];
+let currentPage = 1; const perPage = 10;
+
+function login(){
+  if(document.getElementById('password').value === ADMIN_PASSWORD){
+    document.getElementById('login-box').style.display='none';
+    document.getElementById('admin-panel').style.display='block';
+    loadAdmin();
+    loadSettingPromo();
+    loadStatistikPromo();
+  } else showNotif('Password salah!','gagal');
+}
+
+function gantiTab(tab, el){
+  document.querySelectorAll('.btn-tab').forEach(b=>b.classList.remove('aktif'));
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('aktif'));
+  el.classList.add('aktif');
+  document.getElementById('tab-'+tab).classList.add('aktif');
+}
+
+document.getElementById('gambar').onchange = e => {
+  gambarBaru = e.target.files[0];
+  if(gambarBaru){ document.getElementById('preview').src=URL.createObjectURL(gambarBaru); document.getElementById('preview').style.display='block'; }
+}
+
+document.getElementById('gambar_promo').onchange = e => {
+  gambarPromoBaru = Array.from(e.target.files);
+  const preview = document.getElementById('preview_promo_list');
+  preview.innerHTML = '';
+  gambarPromoBaru.forEach((file,i)=>{
+    const img = document.createElement('img');
+    img.src = URL.createObjectURL(file);
+    img.style = 'width:80px;height:80px;object-fit:cover;border-radius:8px;border:2px solid #ff9800';
+    img.title = i==0? 'Hadiah Utama' : `Hadiah ${i+1}`;
+    preview.appendChild(img);
+  });
+}
+
+async function loadAdmin(){
+  const {data, error}=await db.from('prodak').select('*').order('deskripsi',{ascending:true}).order('nama',{ascending:true});
+  if(error){ showNotif('Error Load: '+error.message,'gagal'); return; }
+  allProdukAdmin = data || []; produkTampil = allProdukAdmin;
+  loadKategoriHistory();
+  tampilAdmin();
+}
+
+function loadKategoriHistory(){
+  const kategori = [...new Set(allProdukAdmin.map(p => p.deskripsi).filter(k => k))];
+  const list1 = document.getElementById('list-kategori');
+  const list2 = document.getElementById('list-filter-kategori');
+  list1.innerHTML = ''; list2.innerHTML = '';
+  kategori.forEach(k=>{
+    list1.innerHTML += `<option value="${k}">`;
+    list2.innerHTML += `<option value="${k}">`;
+  })
+}
+
+function tampilAdmin(){
+  let c=document.getElementById('list-produk'); c.innerHTML="";
+  let start=(currentPage-1)*perPage;let end=start+perPage;
+  let today = new Date().toISOString().split('T')[0];
+  let data=produkTampil.slice(start,end);
+  if(data.length===0){c.innerHTML="<p style='text-align:center;color:#999;grid-column:span 3;'>Produk tidak ditemukan</p>";return;}
+  data.forEach(p=>{
+    let badgeColor=p.deskripsi==='Snack Box'?'#00c853':'#1976d2';
+    let stokClass=p.stok<=10?'stok-merah':''; // GANTI JADI 10
+    let diskonAktif = p.diskon > 0;
+    if(p.tgl_kadaluarsa && p.tgl_kadaluarsa < today) diskonAktif = false;
+    let hargaCoret = diskonAktif?`<div style="text-decoration:line-through;font-size:10px;color:#999">Rp ${Number(p.harga).toLocaleString('id-ID')}</div>`: '';
+    let badgeDiskon = diskonAktif?`<div class="badge badge-diskon">-${p.diskon}%</div>`: p.tgl_kadaluarsa? `<div class="badge badge-expired">Expired</div>`: '';
+    let hargaFinal = diskonAktif? p.harga-(p.harga*p.diskon/100) : p.harga;
+    c.innerHTML+=`<div class="item-admin">
+      <div class="btn-group-admin"><button style="padding:5px 8px;font-size:10px" class="btn-edit" onclick="editProdukDariId(${p.id})">✏️</button><button style="padding:5px 8px;font-size:10px" class="btn-hapus" onclick="hapusProduk(${p.id})">🗑️</button></div>
+      ${badgeDiskon}
+      <img src="${p.gambar_url}">
+      <span class="badge" style="background:${badgeColor};margin-top:4px;position:static;">${p.deskripsi}</span>
+      <b style="margin-top:4px;">${p.nama}</b>${hargaCoret}<b style="color:#00c853">Rp ${Number(hargaFinal).toLocaleString('id-ID')}</b><small class="${stokClass}">Stok: ${p.stok}</small>${p.tgl_kadaluarsa?`<small style="color:#666">Exp: ${p.tgl_kadaluarsa}</small>`:''}
+    </div>`
+  });
+  document.getElementById('page-info').innerText=`Hal ${currentPage} dari ${Math.ceil(produkTampil.length/perPage)||1}`;
+}
+
+function editProdukDariId(id){let p=allProdukAdmin.find(x=>x.id==id);editProduk(p);}
+function nextPage(){if(currentPage<Math.ceil(produkTampil.length/perPage)){currentPage++;tampilAdmin();}}
+function prevPage(){if(currentPage>1){currentPage--;tampilAdmin();}}
+
+// GABUNGKAN SEMUA FILTER JADI 1
+function filterSemua(){
+  let keyword=document.getElementById('cari').value.toLowerCase();
+  let kat=document.getElementById('filter-kat').value.toLowerCase();
+  let stokFilter=document.getElementById('filter-stok').value;
+  let diskonFilter=document.getElementById('filter-diskon').value;
+  let today = new Date().toISOString().split('T')[0];
+
+  produkTampil = allProdukAdmin.filter(p=>{
+    let cocok = true;
+
+    // Filter Cari
+    if(keyword &&!p.nama.toLowerCase().includes(keyword)) cocok = false;
+
+    // Filter Kategori
+    if(kat &&!p.deskripsi.toLowerCase().includes(kat)) cocok = false;
+
+    // Filter Stok
+    if(stokFilter === 'tipis' && p.stok > 10) cocok = false;
+    if(stokFilter === 'habis' && p.stok > 0) cocok = false;
+
+    // Filter Diskon
+    let diskonAktif = p.diskon > 0;
+    if(p.tgl_kadaluarsa && p.tgl_kadaluarsa < today) diskonAktif = false;
+    if(diskonFilter === 'diskon' &&!diskonAktif) cocok = false;
+    if(diskonFilter === 'normal' && diskonAktif) cocok = false;
+
+    return cocok;
+  });
+  currentPage=1;
+  tampilAdmin();
+}
+
+async function simpanProduk(){
+  const id=document.getElementById('edit-id').value;
+  let gambar_url=document.getElementById('preview').src;
+  showNotif('Menyimpan...','sukses');
+  try{
+    if(gambarBaru){
+      const fileName=Date.now()+'-'+gambarBaru.name;
+      await db.storage.from('gambar-produk').upload(fileName,gambarBaru);
+      const {data}=db.storage.from('gambar-produk').getPublicUrl(fileName);
+      gambar_url=data.publicUrl;
+    }
+    const dataProduk={
+      nama:document.getElementById('nama').value,
+      harga:parseInt(document.getElementById('harga').value),
+      stok:parseInt(document.getElementById('stok').value),
+      diskon:parseInt(document.getElementById('diskon').value)||0,
+      tgl_kadaluarsa:document.getElementById('tgl_kadaluarsa').value || null,
+      deskripsi:document.getElementById('deskripsi').value,
+      gambar_url
+    };
+    let res;
+    if(id){res=await db.from('prodak').update(dataProduk).eq('id',id).select();}
+    else{res=await db.from('prodak').insert([dataProduk]).select();}
+    if(res.error)throw res.error;
+    showNotif(id?'✅ Update Berhasil!':'✅ Simpan Berhasil!','sukses');
+    batalEdit();loadAdmin();
+  }catch(err){showNotif('❌ GAGAL: '+err.message,'gagal');}
+}
+
+function editProduk(p){
+  document.getElementById('form-title').innerText='Edit Produk';
+  document.getElementById('edit-id').value=p.id;
+  document.getElementById('nama').value=p.nama;
+  document.getElementById('harga').value=p.harga;
+  document.getElementById('stok').value=p.stok;
+  document.getElementById('diskon').value=p.diskon||0;
+  document.getElementById('tgl_kadaluarsa').value=p.tgl_kadaluarsa||'';
+  document.getElementById('deskripsi').value=p.deskripsi;
+  document.getElementById('preview').src=p.gambar_url;
+  document.getElementById('preview').style.display='block';
+  document.getElementById('btn-batal').style.display='block';
+  gambarBaru=null;window.scrollTo(0,0);
+}
+function batalEdit(){['edit-id','nama','harga','stok','diskon','tgl_kadaluarsa','deskripsi'].forEach(id=>document.getElementById(id).value='');document.getElementById('diskon').value='0';document.getElementById('gambar').value='';document.getElementById('preview').style.display='none';document.getElementById('btn-batal').style.display='none';document.getElementById('form-title').innerText='Tambah Produk';gambarBaru=null;}
+async function hapusProduk(id){if(confirm('Yakin hapus produk ini?')){const {error}=await db.from('prodak').delete().eq('id',id);if(error)showNotif('Gagal: '+error.message,'gagal');else showNotif('🗑️ Hapus Berhasil!','sukses');loadAdmin();}}
+
+async function loadSettingPromo(){
+  try{
+    const {data} = await db.from('setting').select('*').eq('key','promo_undian').single();
+    if(data && data.value){
+      const val = typeof data.value === 'string'? JSON.parse(data.value) : data.value;
+      document.getElementById('promo_aktif').checked = val.aktif;
+      document.getElementById('promo_minimal').value = val.minimal;
+      document.getElementById('promo_tgl_akhir').value = val.tgl_akhir || '';
+      const preview = document.getElementById('preview_promo_list');
+      preview.innerHTML = '';
+      if(val.gambar_urls && val.gambar_urls.length > 0){
+        val.gambar_urls.forEach((url,i)=>{
+          const img = document.createElement('img');
+          img.src = url;
+          img.style = 'width:80px;height:80px;object-fit:cover;border-radius:8px;border:2px solid #ff9800';
+          img.title = i==0? 'Hadiah Utama' : `Hadiah ${i+1}`;
+          preview.appendChild(img);
+        });
+      }
+    }
+  }catch(e){console.log("Setting promo kosong")}
+}
+
+async function simpanSettingPromo(){
+  showNotif('Menyimpan...','sukses');
+  let gambar_urls = [];
+  try{
+    const {data: dataLama} = await db.from('setting').select('*').eq('key','promo_undian').single();
+    if(dataLama){
+      const valLama = typeof dataLama.value === 'string'? JSON.parse(dataLama.value) : dataLama.value;
+      gambar_urls = valLama.gambar_urls || [];
+    }
+    if(gambarPromoBaru.length > 0){
+      gambar_urls = [];
+      for(let i=0; i<gambarPromoBaru.length; i++){
+        const file = gambarPromoBaru[i];
+        const fileName='promo-'+Date.now()+'-'+i+'-'+file.name;
+        await db.storage.from('gambar-produk').upload(fileName,file);
+        const {data}=db.storage.from('gambar-produk').getPublicUrl(fileName);
+        gambar_urls.push(data.publicUrl);
+      }
+    }
+    const settingObj = {
+      aktif: document.getElementById('promo_aktif').checked,
+      minimal: parseInt(document.getElementById('promo_minimal').value) || 100000,
+      tgl_akhir: document.getElementById('promo_tgl_akhir').value || null,
+      gambar_urls: gambar_urls
+    };
+    const {error} = await db.from('setting').upsert({key:'promo_undian', value: JSON.stringify(settingObj)});
+    if(error) throw error;
+    showNotif('✅ Pengaturan Promo Disimpan!','sukses');
+    gambarPromoBaru = [];
+  }catch(err){showNotif('❌ GAGAL: '+err.message,'gagal');}
+}
+
+async function loadStatistikPromo(){
+  const bulanIni = new Date().toISOString().slice(0,7);
+  const {data} = await db.from('pesenan').select('jumlah_kupon').like('created_at', bulanIni+'%').gt('jumlah_kupon', 0);
+  let totalKupon = 0;
+  data?.forEach(d=> totalKupon += d.jumlah_kupon);
+  document.getElementById('total-kupon-bulan').innerText = totalKupon;
+  document.getElementById('total-pesanan-promo').innerText = data?.length || 0;
+}
+
+function showNotif(pesan,tipe){
+  const n = document.getElementById('notif');
+  n.className = 'notif '+tipe;
+  n.innerText = pesan;
+  n.style.display = 'block';
+  setTimeout(()=>{n.style.display='none'},3000);
+}
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw-admin.js').then(reg => console.log('SW Admin Registered')).catch(err => console.log('SW Admin Error'));
+  });
+}
+</script>
+</body>
+</html>
