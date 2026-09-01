@@ -38,9 +38,12 @@ button:active{transform:scale(0.97)}
 .filter-admin{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:15px}
 .label-kecil{font-size:11px;color:#666;margin-top:-5px;margin-bottom:5px}
 .btn-group-admin{position:absolute;top:5px;right:5px;display:flex;gap:5px;z-index:3}
-.menu-tab{display:flex;gap:10px;margin-bottom:20px;border-bottom:2px solid #e3f2fd;flex-wrap:wrap}
-.btn-tab{flex:1;padding:12px;border:none;background:#e3f2fd;color:#1976d2;font-weight:bold;border-radius:10px 10px 0 0;cursor:pointer;min-width:120px}
+
+/* DIUBAH: MENU TAB DADI 1 BARIS */
+.menu-tab{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:20px;border-bottom:2px solid #e3f2fd;padding-bottom:10px}
+.btn-tab{width:100%;padding:12px 5px;border:none;background:#e3f2fd;color:#1976d2;font-weight:bold;border-radius:10px;cursor:pointer;font-size:13px}
 .btn-tab.aktif{background:linear-gradient(135deg, #1976d2 0%, #00c853 100%);color:white}
+
 .tab-content{display:none}
 .tab-content.aktif{display:block}
 .box-promo{background:#fff3e0;border:2px solid #ff9800;padding:15px;border-radius:12px;margin-bottom:15px}
@@ -50,11 +53,18 @@ button:active{transform:scale(0.97)}
 .slider:before{position:absolute;content:"";height:26px;width:26px;left:4px;bottom:4px;background-color:white;transition:.4s;border-radius:50%}
 input:checked +.slider{background-color:#00c853}
 input:checked +.slider:before{transform:translateX(26px)}
-.card-karyawan{background:#e3f2fd;padding:20px;border-radius:15px}
+.card-karyawan{background:#e3f2fd;padding:20px;border-radius:15px;margin-bottom:15px}
 video{width:100%;border-radius:12px;border:3px solid #1976d2;background:#000}
 #status_karyawan{font-weight:bold;margin-top:10px;padding:10px;border-radius:8px;font-size:14px}
 #status_karyawan.ok{background:#e8f5e9;color:#2e7d32}
 .daftar-karyawan{margin-top:15px;font-size:13px;text-align:left;background:white;padding:10px;border-radius:10px;max-height:250px;overflow-y:auto}
+
+/* BARU: STYLE ABSEN MANUAL */
+.box-absen-manual{background:white;padding:15px;border-radius:12px;border:2px solid #00c853}
+.riwayat-absen{max-height:300px;overflow-y:auto;font-size:12px}
+.item-riwayat{display:flex;justify-content:space-between;padding:8px;border-bottom:1px solid #eee}
+.item-riwayat.masuk{border-left:4px solid #00c853}
+.item-riwayat.pulang{border-left:4px solid #1976d2}
 </style>
 </head>
 <body>
@@ -64,9 +74,11 @@ video{width:100%;border-radius:12px;border:3px solid #1976d2;background:#000}
 
   <div id="admin-panel">
     <div id="notif" class="notif"></div>
+
+    <!-- MENU TAB 1 BARIS -->
     <div class="menu-tab">
       <button class="btn-tab aktif" onclick="gantiTab('produk', this)">📦 Produk</button>
-      <button class="btn-tab" onclick="gantiTab('promo', this)">🎁 Promo Undian</button>
+      <button class="btn-tab" onclick="gantiTab('promo', this)">🎁 Promo</button>
       <button class="btn-tab" onclick="gantiTab('karyawan', this)">👤 Karyawan</button>
     </div>
 
@@ -157,9 +169,13 @@ video{width:100%;border-radius:12px;border:3px solid #1976d2;background:#000}
       </div>
     </div>
 
+    <!-- TAB KARYAWAN DI UPGRADE -->
     <div id="tab-karyawan" class="tab-content">
-      <h3>📸 Daftar Wajah Karyawan - Auto ID</h3>
+      <h3>👤 Manajemen Karyawan</h3>
+
+      <!-- 1. DAFTAR WAJAH -->
       <div class="card-karyawan">
+        <h4>📸 Daftar Wajah Karyawan - Auto ID</h4>
         <input type="text" id="id_auto_karyawan" placeholder="ID Otomatis" readonly style="background:#bbdefb;font-weight:bold">
         <input type="text" id="nama_karyawan" placeholder="Ketik Nama Lengkap Karyawan">
         <video id="video_karyawan" width="400" height="300" autoplay muted playsinline></video>
@@ -170,6 +186,25 @@ video{width:100%;border-radius:12px;border:3px solid #1976d2;background:#000}
           <div id="listKaryawan">Memuat...</div>
         </div>
       </div>
+
+      <!-- 2. BARU: ABSEN MANUAL -->
+      <div class="box-absen-manual">
+        <h4>✍️ Absen Manual - Untuk HP Rusak</h4>
+        <div class="grid">
+          <select id="select_karyawan_absen">
+            <option value="">-- Pilih Karyawan --</option>
+          </select>
+          <select id="select_tipe_absen">
+            <option value="masuk">Absen Masuk</option>
+            <option value="pulang">Absen Pulang</option>
+          </select>
+        </div>
+        <button onclick="absenManual()">✅ Simpan Absen Manual</button>
+        <hr>
+        <h4>📋 Riwayat Absen Hari Ini</h4>
+        <div class="riwayat-absen" id="riwayatAbsenAdmin">Loading...</div>
+      </div>
+
     </div>
 
   </div>
@@ -201,6 +236,7 @@ function gantiTab(tab, el){
   document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('aktif'));
   el.classList.add('aktif');
   document.getElementById('tab-'+tab).classList.add('aktif');
+  if(tab == 'karyawan'){ loadRiwayatAbsenAdmin(); } // load riwayat pas buka tab
 }
 
 document.getElementById('gambar').onchange = e => {
@@ -311,7 +347,7 @@ async function simpanProduk(){
     showNotif(id?'✅ Update Berhasil!':'✅ Simpan Berhasil!','sukses');
     batalEdit();loadAdmin();
   }catch(err){showNotif('❌ GAGAL: '+err.message,'gagal');}
-} // <-- INI YANG KURANG TADI
+}
 
 function editProduk(p){
   document.getElementById('form-title').innerText='Edit Produk';
@@ -350,7 +386,7 @@ async function loadSettingPromo(){
       }
     }
   }catch(e){console.log("Setting promo kosong")}
-} // <-- INI JUGA KURANG TADI
+}
 
 async function simpanSettingPromo(){
   showNotif('Menyimpan...','sukses');
@@ -405,7 +441,7 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-// KODE KARYAWAN
+// KODE KARYAWAN + BARU ABSEN MANUAL
 function initKaryawan(){
   navigator.mediaDevices.getUserMedia({video: {width: 400, height: 300, facingMode: "user"}}).then(s => {document.getElementById('video_karyawan').srcObject = s;})
   Promise.all([
@@ -429,12 +465,17 @@ async function loadKaryawan(){
     nextID = 101;
   }
   document.getElementById("id_auto_karyawan").value = nextID;
+
+  // ISI DROPDOWN ABSEN MANUAL
+  let optionHtml = '<option value="">-- Pilih Karyawan --</option>';
   let listHtml = '';
   if(dataKaryawanTerdaftar.length > 0){
     dataKaryawanTerdaftar.forEach(k => {
+      optionHtml += `<option value="${k.karyawan_id}|${k.nama}">ID:${k.karyawan_id} - ${k.nama}</option>`;
       listHtml += `ID: ${k.karyawan_id} - ${k.nama} <br>`;
     })
   } else { listHtml = 'Belum ada data' }
+  document.getElementById("select_karyawan_absen").innerHTML = optionHtml;
   document.getElementById("listKaryawan").innerHTML = listHtml;
 }
 async function daftarWajah(){
@@ -457,6 +498,47 @@ async function daftarWajah(){
   await loadKaryawan();
   document.getElementById("nama_karyawan").value = '';
   showNotif(`✅ ${nama} ID:${id} Berhasil didaftarkan`,'sukses');
+}
+
+// BARU: FUNGSI ABSEN MANUAL
+async function absenManual(){
+  const val = document.getElementById('select_karyawan_absen').value;
+  const tipe = document.getElementById('select_tipe_absen').value;
+  if(!val) return showNotif('❌ Pilih karyawan dulu','gagal');
+
+  const [id, nama] = val.split('|');
+
+  // Cek dobel absen
+  const hariIni = new Date().toISOString().split('T')[0];
+  const {data} = await db.from('absensi').select('*').eq('karyawan_id', id).eq('tipe', tipe).gte('jam', hariIni);
+  if(data.length > 0) return showNotif(`❌ ${nama} sudah absen ${tipe} hari ini`,'gagal');
+
+  const {error} = await db.from('absensi').insert([{
+    karyawan_id: id,
+    nama: nama,
+    tipe: tipe,
+    jam: new Date(),
+    foto_url: 'manual_admin' // penanda absen manual
+  }]);
+
+  if(error) return showNotif('❌ Gagal: '+error.message,'gagal');
+  showNotif(`✅ ${nama} Berhasil absen ${tipe}`,'sukses');
+  loadRiwayatAbsenAdmin();
+}
+
+async function loadRiwayatAbsenAdmin(){
+  const hariIni = new Date().toISOString().split('T')[0];
+  const {data} = await db.from('absensi').select('*').gte('jam', hariIni).order('jam', {ascending: false});
+  let html = '';
+  if(data.length > 0){
+    data.forEach(a=>{
+      html += `<div class="item-riwayat ${a.tipe}">
+        <span><b>${a.nama}</b> - ${a.tipe}</span>
+        <span>${new Date(a.jam).toLocaleTimeString('id-ID')}</span>
+      </div>`;
+    })
+  } else { html = '<p style="text-align:center;color:#999">Belum ada absen</p>' }
+  document.getElementById('riwayatAbsenAdmin').innerHTML = html;
 }
 </script>
 </body></html>
