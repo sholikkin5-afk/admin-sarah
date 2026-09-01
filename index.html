@@ -10,7 +10,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Admin SARAHmart</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.min.js"></script> <!-- FACE API BARU -->
+<script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.min.js"></script>
 <style>
 body{font-family:'Segoe UI';background:#f0f7ff;padding:15px}
 .container{max-width:1000px;margin:auto;background:white;padding:20px;border-radius:15px;box-shadow:0 4px 12px rgba(25,118,210,0.1)}
@@ -50,8 +50,6 @@ button:active{transform:scale(0.97)}
 .slider:before{position:absolute;content:"";height:26px;width:26px;left:4px;bottom:4px;background-color:white;transition:.4s;border-radius:50%}
 input:checked +.slider{background-color:#00c853}
 input:checked +.slider:before{transform:translateX(26px)}
-
-/* STYLE BARU UNTUK KARYAWAN */
 .card-karyawan{background:#e3f2fd;padding:20px;border-radius:15px}
 video{width:100%;border-radius:12px;border:3px solid #1976d2;background:#000}
 #status_karyawan{font-weight:bold;margin-top:10px;padding:10px;border-radius:8px;font-size:14px}
@@ -69,10 +67,9 @@ video{width:100%;border-radius:12px;border:3px solid #1976d2;background:#000}
     <div class="menu-tab">
       <button class="btn-tab aktif" onclick="gantiTab('produk', this)">📦 Produk</button>
       <button class="btn-tab" onclick="gantiTab('promo', this)">🎁 Promo Undian</button>
-      <button class="btn-tab" onclick="gantiTab('karyawan', this)">👤 Karyawan</button> <!-- TAB BARU -->
+      <button class="btn-tab" onclick="gantiTab('karyawan', this)">👤 Karyawan</button>
     </div>
 
-    <!-- TAB PRODUK - AMAN 100% KODE ASLI MU -->
     <div id="tab-produk" class="tab-content aktif">
       <h3 id="form-title">Tambah Produk</h3>
       <input type="hidden" id="edit-id">
@@ -123,7 +120,6 @@ video{width:100%;border-radius:12px;border:3px solid #1976d2;background:#000}
       </div>
     </div>
 
-    <!-- TAB PROMO - AMAN 100% KODE ASLI MU -->
     <div id="tab-promo" class="tab-content">
       <h3>🎁 Pengaturan Promo Undian</h3>
       <div class="box-promo">
@@ -161,7 +157,6 @@ video{width:100%;border-radius:12px;border:3px solid #1976d2;background:#000}
       </div>
     </div>
 
-    <!-- TAB KARYAWAN BARU -->
     <div id="tab-karyawan" class="tab-content">
       <h3>📸 Daftar Wajah Karyawan - Auto ID</h3>
       <div class="card-karyawan">
@@ -188,11 +183,8 @@ const ADMIN_PASSWORD = "sarah123"
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 let allProdukAdmin = []; let produkTampil = []; let gambarBaru = null; let gambarPromoBaru = [];
 let currentPage = 1; const perPage = 10;
-
-// VAR BARU UNTUK KARYAWAN
 let dataKaryawanTerdaftar = []; let nextID = 101; let aiWajahSiap = false;
 
-// ===== KODE ASLI MU SEMUA DIBAWAH INI AMAN =====
 function login(){
   if(document.getElementById('password').value === ADMIN_PASSWORD){
     document.getElementById('login-box').style.display='none';
@@ -200,7 +192,7 @@ function login(){
     loadAdmin();
     loadSettingPromo();
     loadStatistikPromo();
-    initKaryawan(); // LOAD KARYAWAN JUGA
+    initKaryawan();
   } else showNotif('Password salah!','gagal');
 }
 
@@ -211,7 +203,6 @@ function gantiTab(tab, el){
   document.getElementById('tab-'+tab).classList.add('aktif');
 }
 
-//... KODE PRODUK + PROMO KAMU DARI SINI SAMPAI BAWAH TETEP SAMA PERSIS...
 document.getElementById('gambar').onchange = e => {
   gambarBaru = e.target.files[0];
   if(gambarBaru){ document.getElementById('preview').src=URL.createObjectURL(gambarBaru); document.getElementById('preview').style.display='block'; }
@@ -320,6 +311,8 @@ async function simpanProduk(){
     showNotif(id?'✅ Update Berhasil!':'✅ Simpan Berhasil!','sukses');
     batalEdit();loadAdmin();
   }catch(err){showNotif('❌ GAGAL: '+err.message,'gagal');}
+} // <-- INI YANG KURANG TADI
+
 function editProduk(p){
   document.getElementById('form-title').innerText='Edit Produk';
   document.getElementById('edit-id').value=p.id;
@@ -357,7 +350,8 @@ async function loadSettingPromo(){
       }
     }
   }catch(e){console.log("Setting promo kosong")}
-}
+} // <-- INI JUGA KURANG TADI
+
 async function simpanSettingPromo(){
   showNotif('Menyimpan...','sukses');
   let gambar_urls = [];
@@ -388,6 +382,8 @@ async function simpanSettingPromo(){
     showNotif('✅ Pengaturan Promo Disimpan!','sukses');
     gambarPromoBaru = [];
   }catch(err){showNotif('❌ GAGAL: '+err.message,'gagal');}
+}
+
 async function loadStatistikPromo(){
   const bulanIni = new Date().toISOString().slice(0,7);
   const {data} = await db.from('pesenan').select('jumlah_kupon').like('created_at', bulanIni+'%').gt('jumlah_kupon', 0);
@@ -409,7 +405,7 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-// ===== KODE BARU UNTUK KARYAWAN MULAI DARI SINI =====
+// KODE KARYAWAN
 function initKaryawan(){
   navigator.mediaDevices.getUserMedia({video: {width: 400, height: 300, facingMode: "user"}}).then(s => {document.getElementById('video_karyawan').srcObject = s;})
   Promise.all([
@@ -423,7 +419,6 @@ function initKaryawan(){
     aiWajahSiap = true;
   })
 }
-
 async function loadKaryawan(){
   const {data} = await db.from('karyawan_wajah').select('*').order('karyawan_id');
   dataKaryawanTerdaftar = data || [];
@@ -442,7 +437,6 @@ async function loadKaryawan(){
   } else { listHtml = 'Belum ada data' }
   document.getElementById("listKaryawan").innerHTML = listHtml;
 }
-
 async function daftarWajah(){
   if(!aiWajahSiap) return showNotif('AI belum siap','gagal');
   const id = document.getElementById("id_auto_karyawan").value;
