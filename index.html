@@ -103,7 +103,6 @@ video{width:100%;border-radius:12px;border:3px solid #1976d2;background:#000}
         </div>
       </div>
 
-      <!-- KOLOM BARU UNTUK GAMBAR URL -->
       <input type="file" id="gambar" accept="image/*">
       <div class="label-kecil">📤 Opsi 1: Upload Gambar. Akan otomatis jadi link</div>
       <input type="text" id="gambar_url" placeholder="https://... Opsi 2: Paste Link Gambar Disini">
@@ -117,6 +116,19 @@ video{width:100%;border-radius:12px;border:3px solid #1976d2;background:#000}
         <input type="text" id="cari" placeholder="🔍 Cari nama produk..." onkeyup="filterSemua()">
         <input type="text" id="filter-kat" list="list-filter-kategori" placeholder="Filter Kategori" onkeyup="filterSemua()">
         <datalist id="list-filter-kategori"></datalist>
+
+        <!-- FITUR BARU: URUTKAN -->
+        <select id="urutkan" onchange="filterSemua()">
+          <option value="baru">🆕 Terbaru Ditambahkan</option>
+          <option value="lama">📅 Paling Lama</option>
+          <option value="nama_az">🔤 Nama A - Z</option>
+          <option value="nama_za">🔤 Nama Z - A</option>
+          <option value="harga_tinggi">💰 Harga Tertinggi</option>
+          <option value="harga_rendah">💵 Harga Terendah</option>
+          <option value="stok_tinggi">📦 Stok Terbanyak</option>
+          <option value="stok_rendah">⚠️ Stok Tersedikit</option>
+        </select>
+
         <select id="filter-stok" onchange="filterSemua()">
           <option value="semua">Semua Stok</option>
           <option value="tipis">⚠️ Stok Tipis ≤ 10</option>
@@ -128,6 +140,7 @@ video{width:100%;border-radius:12px;border:3px solid #1976d2;background:#000}
           <option value="normal">Normal - Tanpa Diskon</option>
         </select>
       </div>
+      <button onclick="bersihkanGambarNganggur()" style="background:linear-gradient(135deg, #d32f2f 0%, #f44336 100%);margin-bottom:15px">🧹 Bersihkan Gambar Nganggur</button>
       <div id="list-produk" class="list-grid">Loading...</div>
       <div class="pagination">
         <button onclick="prevPage()"><<</button>
@@ -271,7 +284,7 @@ document.getElementById('gambar').onchange = e => {
   if(gambarBaru){
     document.getElementById('preview').src=URL.createObjectURL(gambarBaru);
     document.getElementById('preview').style.display='block';
-    document.getElementById('gambar_url').value = ''; // Kosongne input link nek upload
+    document.getElementById('gambar_url').value = '';
   }
 }
 
@@ -279,7 +292,7 @@ document.getElementById('gambar_url').oninput = e => {
   if(e.target.value){
     document.getElementById('preview').src = e.target.value;
     document.getElementById('preview').style.display='block';
-    gambarBaru = null; // Kosongne file upload nek paste link
+    gambarBaru = null;
     document.getElementById('gambar').value = '';
   }
 }
@@ -298,11 +311,11 @@ document.getElementById('gambar_promo').onchange = e => {
 }
 
 async function loadAdmin(){
-  const {data, error}=await db.from('prodak').select('*').order('deskripsi',{ascending:true}).order('nama',{ascending:true});
+  const {data, error}=await db.from('prodak').select('*').order('id',{ascending:false});
   if(error){ showNotif('Error Load: '+error.message,'gagal'); return; }
   allProdukAdmin = data || []; produkTampil = allProdukAdmin;
   loadKategoriHistory();
-  tampilAdmin();
+  filterSemua(); // Pake filterSemua ben langsung ke urut
 }
 
 function loadKategoriHistory(){
@@ -350,7 +363,10 @@ function filterSemua(){
   let kat=document.getElementById('filter-kat').value.toLowerCase();
   let stokFilter=document.getElementById('filter-stok').value;
   let diskonFilter=document.getElementById('filter-diskon').value;
+  let urutkan = document.getElementById('urutkan').value; // AMBIL URUTAN
   let today = new Date().toISOString().split('T')[0];
+
+  // FILTER DISIK
   produkTampil = allProdukAdmin.filter(p=>{
     let cocok = true;
     if(keyword &&!p.nama.toLowerCase().includes(keyword)) cocok = false;
@@ -363,23 +379,38 @@ function filterSemua(){
     if(diskonFilter === 'normal' && diskonAktif) cocok = false;
     return cocok;
   });
+
+  // URUTKAN SESUDAH FILTER
+  produkTampil.sort((a,b)=>{
+    switch(urutkan){
+      case 'nama_az': return a.nama.localeCompare(b.nama);
+      case 'nama_za': return b.nama.localeCompare(a.nama);
+      case 'harga_tinggi': return b.harga - a.harga;
+      case 'harga_rendah': return a.harga - b.harga;
+      case 'stok_tinggi': return b.stok - a.stok;
+      case 'stok_rendah': return a.stok - b.stok;
+      case 'lama': return a.id - b.id; // ID kecil = lama
+      case 'baru': default: return b.id - a.id; // ID gede = baru
+    }
+  });
+
   currentPage=1;
   tampilAdmin();
 }
 
 async function simpanProduk(){
   const id=document.getElementById('edit-id').value;
-  let gambar_url=document.getElementById('gambar_url').value; // Ambil dari input link dulu
+  let gambar_url=document.getElementById('gambar_url').value;
   showNotif('Menyimpan...','sukses');
   try{
-    if(gambarBaru){ // Nek ada upload file, prioritas upload
+    if(gambarBaru){
       const fileName=Date.now()+'-'+gambarBaru.name;
       await db.storage.from('gambar-produk').upload(fileName,gambarBaru);
       const {data}=db.storage.from('gambar-produk').getPublicUrl(fileName);
       gambar_url=data.publicUrl;
     }
 
-    if(!gambar_url) gambar_url = 'https://placehold.co/400x400/eee/999?text=No+Img'; // Default
+    if(!gambar_url) gambar_url = 'https://placehold.co/400x400/eee/999?text=No+Img';
 
     const dataProduk={
       nama:document.getElementById('nama').value,
@@ -408,7 +439,7 @@ function editProduk(p){
   document.getElementById('diskon').value=p.diskon||0;
   document.getElementById('tgl_kadaluarsa').value=p.tgl_kadaluarsa||'';
   document.getElementById('deskripsi').value=p.deskripsi;
-  document.getElementById('gambar_url').value=p.gambar_url; // Isi input link
+  document.getElementById('gambar_url').value=p.gambar_url;
   document.getElementById('preview').src=p.gambar_url;
   document.getElementById('preview').style.display='block';
   document.getElementById('btn-batal').style.display='block';
@@ -513,7 +544,7 @@ async function simpanSettingPromo(){
     const settingObj = {
       aktif: document.getElementById('promo_aktif').checked,
       minimal: parseInt(document.getElementById('promo_minimal').value) || 100000,
-      tgl_akhir: document.getElementById('promo_tgl_akhir').value || null,
+      tgl_kadaluarsa: document.getElementById('promo_tgl_akhir').value || null,
       biaya_layanan: parseInt(document.getElementById('promo_biaya_layan').value) || 2000,
       ongkir_default: parseInt(document.getElementById('promo_ongkir').value) || 2000,
       gambar_urls: gambar_urls
@@ -528,10 +559,57 @@ async function simpanSettingPromo(){
 async function loadStatistikPromo(){
   const bulanIni = new Date().toISOString().slice(0,7);
   const {data} = await db.from('pesenan').select('jumlah_kupon').like('created_at', bulanIni+'%').gt('jumlah_kupon', 0);
-  let totalKupon = 0;
+    let totalKupon = 0;
   data?.forEach(d=> totalKupon += d.jumlah_kupon);
   document.getElementById('total-kupon-bulan').innerText = totalKupon;
   document.getElementById('total-pesanan-promo').innerText = data?.length || 0;
+}
+
+async function bersihkanGambarNganggur() {
+  if(!confirm('⚠️ YAKIN MAU HAPUS GAMBAR YANG TIDAK DIPAKAI?\n\nFile seng gak ono neng tabel prodak bakal dihapus permanen dari bucket "gambar-produk".\n\nPastikan backup disek!')) return;
+
+  showNotif('⏳ Mengecek gambar nganggur...','sukses');
+  
+  try{
+    // 1. Ambil semua URL dari tabel prodak
+    const { data: produk, error: err1 } = await db.from('prodak').select('gambar_url');
+    if(err1) throw err1;
+    const urlDipakai = new Set(produk.map(p => p.gambar_url).filter(u => u));
+
+    // 2. Ambil semua file dari bucket gambar-produk
+    const { data: files, error: err2 } = await db.storage.from('gambar-produk').list('', { limit: 1000, sortBy: { column: 'name', order: 'asc' } });
+    if(err2) throw err2;
+
+    let dihapus = 0;
+    let total = files.length;
+    let fileNganggur = [];
+
+    // 3. Cek 1 per 1 file
+    for(const file of files) {
+      const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/gambar-produk/${file.name}`;
+      
+      // Nek URL ne gak ono neng tabel prodak = NGANGGUR
+      if(!urlDipakai.has(publicUrl)) {
+        fileNganggur.push(file.name);
+      }
+    }
+
+    if(fileNganggur.length === 0){
+      return showNotif('✅ Aman! Tidak ada gambar nganggur.', 'sukses');
+    }
+
+    if(!confirm(`Ditemukan ${fileNganggur.length} file nganggur.\nContoh: ${fileNganggur.slice(0,3).join(', ')}\n\nLanjut hapus?`)) return;
+
+    // 4. Hapus file nganggur
+    const { error: err3 } = await db.storage.from('gambar-produk').remove(fileNganggur);
+    if(err3) throw err3;
+    dihapus = fileNganggur.length;
+    
+    showNotif(`✅ Selesai! ${dihapus} file nganggur berhasil dihapus.`, 'sukses');
+  }catch(err){
+    showNotif('❌ GAGAL: '+err.message, 'gagal');
+    console.error(err);
+  }
 }
 
 function showNotif(pesan,tipe){
