@@ -39,7 +39,7 @@ button:active{transform:scale(0.97)}
 .filter-admin{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:15px}
 .label-kecil{font-size:11px;color:#666;margin-top:-5px;margin-bottom:5px}
 .btn-group-admin{position:absolute;top:5px;right:5px;display:flex;gap:5px;z-index:3}
-.menu-tab{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:20px;border-bottom:2px solid #e3f2fd;padding-bottom:10px}
+.menu-tab{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:8px;margin-bottom:20px;border-bottom:2px solid #e3f2fd;padding-bottom:10px}
 .btn-tab{width:100%;padding:12px 5px;border:none;background:#e3f2fd;color:#1976d2;font-weight:bold;border-radius:10px;cursor:pointer;font-size:13px}
 .btn-tab.aktif{background:linear-gradient(135deg, #1976d2 0%, #00c853 100%);color:white}
 .tab-content{display:none}
@@ -64,6 +64,17 @@ video{width:100%;border-radius:12px;border:3px solid #1976d2;background:#000}
 .item-riwayat.pulang{border-left:4px solid #1976d2}
 .list-desa{margin-top:10px}
 .item-desa{display:flex;justify-content:space-between;align-items:center;background:white;padding:10px;border-radius:8px;margin-bottom:8px;border:1px solid #c8e6c9}
+
+/* CSS BARU GALERI */
+.list-galeri{display:grid;grid-template-columns:repeat(2, 1fr);gap:12px}
+@media(min-width: 600px){.list-galeri{grid-template-columns:repeat(4, 1fr)}}
+.item-galeri{border:2px solid #e3f2fd;border-radius:12px;padding:8px;background:white;position:relative}
+.item-galeri.selected{border-color:#d32f2f;background:#ffebee}
+.item-galeri img{width:100%;height:120px;object-fit:cover;border-radius:8px}
+.item-galeri input[type=checkbox]{position:absolute;top:5px;left:5px;width:20px;height:20px;z-index:2}
+.nama-file{font-size:10px;word-break:break-all;margin:5px 0;color:#555}
+.link-file{font-size:10px;color:#1976d2;word-break:break-all;cursor:pointer}
+.badge-dipakai{background:#00c853}.badge-nganggur{background:#d32f2f}
 </style>
 </head>
 <body>
@@ -75,6 +86,7 @@ video{width:100%;border-radius:12px;border:3px solid #1976d2;background:#000}
     <div id="notif" class="notif"></div>
     <div class="menu-tab">
       <button class="btn-tab aktif" onclick="gantiTab('produk', this)">📦 Produk</button>
+      <button class="btn-tab" onclick="gantiTab('galeri', this)">🖼️ Galeri</button>
       <button class="btn-tab" onclick="gantiTab('promo', this)">🎁 Promo</button>
       <button class="btn-tab" onclick="gantiTab('wilayah', this)">🏘️ Wilayah</button>
       <button class="btn-tab" onclick="gantiTab('karyawan', this)">👤 Karyawan</button>
@@ -116,8 +128,6 @@ video{width:100%;border-radius:12px;border:3px solid #1976d2;background:#000}
         <input type="text" id="cari" placeholder="🔍 Cari nama produk..." onkeyup="filterSemua()">
         <input type="text" id="filter-kat" list="list-filter-kategori" placeholder="Filter Kategori" onkeyup="filterSemua()">
         <datalist id="list-filter-kategori"></datalist>
-
-        <!-- FITUR BARU: URUTKAN -->
         <select id="urutkan" onchange="filterSemua()">
           <option value="baru">🆕 Terbaru Ditambahkan</option>
           <option value="lama">📅 Paling Lama</option>
@@ -128,7 +138,6 @@ video{width:100%;border-radius:12px;border:3px solid #1976d2;background:#000}
           <option value="stok_tinggi">📦 Stok Terbanyak</option>
           <option value="stok_rendah">⚠️ Stok Tersedikit</option>
         </select>
-
         <select id="filter-stok" onchange="filterSemua()">
           <option value="semua">Semua Stok</option>
           <option value="tipis">⚠️ Stok Tipis ≤ 10</option>
@@ -147,6 +156,27 @@ video{width:100%;border-radius:12px;border:3px solid #1976d2;background:#000}
         <span id="page-info">Hal 1</span>
         <button onclick="nextPage()">>></button>
       </div>
+    </div>
+
+    <!-- TAB BARU GALERI -->
+    <div id="tab-galeri" class="tab-content">
+      <h3>🖼️ Galeri Gambar Bucket</h3>
+      <div style="display:flex;gap:10px;margin-bottom:15px;flex-wrap:wrap">
+        <button onclick="loadGaleri()" style="background:#1976d2">🔄 Refresh Galeri</button>
+        <button id="btn-hapus-pilih" onclick="hapusGambarPilihan()" style="background:#d32f2f;display:none">🗑️ Hapus Terpilih (0)</button>
+<button id="btn-hapus-nganggur" onclick="hapusNganggurOtomatis()" style="background:#dc3545">
+🔥 HAPUS 124 NGANGGUR OTOMATIS
+</button>
+      </div>
+      
+      <select id="filter-galeri" onchange="filterGaleri()" style="margin-bottom:15px">
+        <option value="semua">Semua Gambar</option>
+        <option value="dipakai">✅ Hanya Terpakai</option>
+        <option value="nganggur">❌ Hanya Nganggur</option>
+      </select>
+
+      <div class="label-kecil">Centang gambar seng arep dihapus. Ijo = Dipakai produk. Merah = Nganggur</div>
+      <div id="list-galeri" class="list-galeri">Loading...</div>
     </div>
 
     <div id="tab-promo" class="tab-content">
@@ -257,7 +287,7 @@ const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 let allProdukAdmin = []; let produkTampil = []; let gambarBaru = null; let gambarPromoBaru = [];
 let currentPage = 1; const perPage = 10;
 let dataKaryawanTerdaftar = []; let nextID = 101; let aiWajahSiap = false;
-let daftarDesaAdmin = [];
+let daftarDesaAdmin = []; let gambarDipilih = [];
 
 function login(){
   if(document.getElementById('password').value === ADMIN_PASSWORD){
@@ -277,6 +307,7 @@ function gantiTab(tab, el){
   el.classList.add('aktif');
   document.getElementById('tab-'+tab).classList.add('aktif');
   if(tab == 'karyawan'){ loadRiwayatAbsenAdmin(); }
+  if(tab == 'galeri'){ loadGaleri(); }
 }
 
 document.getElementById('gambar').onchange = e => {
@@ -315,7 +346,7 @@ async function loadAdmin(){
   if(error){ showNotif('Error Load: '+error.message,'gagal'); return; }
   allProdukAdmin = data || []; produkTampil = allProdukAdmin;
   loadKategoriHistory();
-  filterSemua(); // Pake filterSemua ben langsung ke urut
+  filterSemua();
 }
 
 function loadKategoriHistory(){
@@ -363,10 +394,9 @@ function filterSemua(){
   let kat=document.getElementById('filter-kat').value.toLowerCase();
   let stokFilter=document.getElementById('filter-stok').value;
   let diskonFilter=document.getElementById('filter-diskon').value;
-  let urutkan = document.getElementById('urutkan').value; // AMBIL URUTAN
+  let urutkan = document.getElementById('urutkan').value;
   let today = new Date().toISOString().split('T')[0];
 
-  // FILTER DISIK
   produkTampil = allProdukAdmin.filter(p=>{
     let cocok = true;
     if(keyword &&!p.nama.toLowerCase().includes(keyword)) cocok = false;
@@ -380,7 +410,6 @@ function filterSemua(){
     return cocok;
   });
 
-  // URUTKAN SESUDAH FILTER
   produkTampil.sort((a,b)=>{
     switch(urutkan){
       case 'nama_az': return a.nama.localeCompare(b.nama);
@@ -389,8 +418,8 @@ function filterSemua(){
       case 'harga_rendah': return a.harga - b.harga;
       case 'stok_tinggi': return b.stok - a.stok;
       case 'stok_rendah': return a.stok - b.stok;
-      case 'lama': return a.id - b.id; // ID kecil = lama
-      case 'baru': default: return b.id - a.id; // ID gede = baru
+      case 'lama': return a.id - b.id;
+      case 'baru': default: return b.id - a.id;
     }
   });
 
@@ -450,7 +479,154 @@ function batalEdit(){['edit-id','nama','harga','stok','diskon','tgl_kadaluarsa',
 
 async function hapusProduk(id){if(confirm('Yakin hapus produk ini?')){const {error}=await db.from('prodak').delete().eq('id',id);if(error)showNotif('Gagal: '+error.message,'gagal');else showNotif('🗑️ Hapus Berhasil!','sukses');loadAdmin();}}
 
-// FUNGSI WILAYAH
+let allFilesGaleri = []; // nyimpen kabeh file ben iso di filter
+let urlDipakaiGaleri = new Set(); // nyimpen URL seng dipake
+
+async function loadGaleri(){
+  showNotif('⏳ Memuat galeri... Iso 20 detikan','sukses');
+  const { data: produk } = await db.from('prodak').select('gambar_url');
+  
+  urlDipakaiGaleri = new Set(produk.map(p => {
+    if(!p.gambar_url) return '';
+    return decodeURIComponent(p.gambar_url.split('/').pop());
+  }).filter(u => u));
+
+  // LOAD KABEH PAKE PAGINATION
+  allFilesGaleri = [];
+  let offset = 0;
+  let limit = 1000;
+  while(true){
+    const { data: files } = await db.storage.from('gambar-produk').list('', { limit: limit, offset: offset });
+    if(!files || files.length === 0) break;
+    allFilesGaleri = allFilesGaleri.concat(files);
+    offset += limit;
+    if(files.length < limit) break;
+  }
+
+  gambarDipilih = [];
+  updateBtnHapus();
+  filterGaleri();
+  showNotif(`✅ ${allFilesGaleri.length} gambar dimuat`,'sukses');
+}
+
+function filterGaleri(){
+  const filter = document.getElementById('filter-galeri').value;
+  const container = document.getElementById('list-galeri');
+  container.innerHTML = '';
+  
+  let fileDitampil = allFilesGaleri.filter(file=>{
+    const dipakai = urlDipakaiGaleri.has(file.name);
+    if(filter === 'dipakai') return dipakai;
+    if(filter === 'nganggur') return !dipakai;
+    return true;
+  });
+
+  let jumlahNganggur = allFilesGaleri.filter(file=> !urlDipakaiGaleri.has(file.name)).length;
+
+  const btnHapusNganggur = document.getElementById('btn-hapus-nganggur');
+  if(jumlahNganggur > 0){
+    btnHapusNganggur.style.display = 'block';
+    btnHapusNganggur.innerText = `🔥 Hapus Semua Nganggur (${jumlahNganggur})`;
+  } else {
+    btnHapusNganggur.style.display = 'none';
+  }
+
+  if(fileDitampil.length === 0){
+    container.innerHTML = '<p style="text-align:center;color:#999;grid-column:span 4;">Tidak ada gambar</p>';
+    return;
+  }
+
+  fileDitampil.forEach(file=>{
+    const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/gambar-produk/${encodeURIComponent(file.name)}?v=${Date.now()}`; // TAMBAH ?v=ben gak cache
+    const dipakai = urlDipakaiGaleri.has(file.name);
+
+    container.innerHTML += `
+      <div class="item-galeri" id="galeri-${file.name}">
+        <input type="checkbox" onchange="togglePilih('${file.name}', this)">
+        <img src="${publicUrl}" onerror="this.src='https://placehold.co/120x120/eee/999?text=Terhapus'">
+        <div class="badge ${dipakai?'badge-dipakai':'badge-nganggur'}">${dipakai?'Dipakai':'Nganggur'}</div>
+        <div class="nama-file">${file.name}</div>
+        <div class="link-file" onclick="navigator.clipboard.writeText('${publicUrl}');showNotif('Link dicopy','sukses')">📋 Copy Link</div>
+      </div>
+    `;
+  });
+}
+
+async function hapusNganggurOtomatis(){
+  if(!confirm(`⚠️ INI AKAN HAPUS 124 FILE NGANGGUR OTOMATIS\nProses 3-5 menit. Jangan di close.`)) return;
+
+  showNotif('⏳ Scan database + bucket... Tunggu 15 detik','sukses');
+
+  // 1. Ambil semua gambar_url dari tabel prodak
+  const { data: produk } = await db.from('prodak').select('gambar_url');
+  let namaDipakai = new Set();
+  produk.forEach(p => {
+    if(p.gambar_url){
+      let nama = decodeURIComponent(p.gambar_url.split('/').pop());
+      namaDipakai.add(nama);
+    }
+  });
+
+  // 2. Ambil semua file dari bucket pake pagination
+  let allFiles = [];
+  let offset = 0;
+  while(true){
+    const { data: files } = await db.storage.from('gambar-produk').list('', { limit: 1000, offset: offset });
+    if(!files || files.length === 0) break;
+    allFiles = allFiles.concat(files);
+    offset += 1000;
+    if(files.length < 1000) break;
+  }
+  
+  // 3. Cari yg nganggur
+  let fileNganggur = allFiles.filter(f => !namaDipakai.has(f.name)).map(f => f.name);
+
+  if(fileNganggur.length === 0) return showNotif('✅ Aman! Tidak ada file nganggur','sukses');
+
+  showNotif(`⏳ Ditemukan ${fileNganggur.length} file. Mulai hapus...`,'sukses');
+  
+  let totalHapus = 0;
+  // 4. Hapus 10 per 10 ben gak di block Supabase
+  for(let i = 0; i < fileNganggur.length; i += 10){
+    const batch = fileNganggur.slice(i, i + 10);
+    const {error} = await db.storage.from('gambar-produk').remove(batch);
+    if(error) console.error('Gagal:', error);
+    totalHapus += batch.length;
+    showNotif(`Menghapus... ${totalHapus}/${fileNganggur.length}`,'sukses');
+    await new Promise(r => setTimeout(r, 3000)); // jeda 3 detik
+  }
+  
+  showNotif(`✅ SELESAI! ${totalHapus} gambar nganggur dihapus`,'sukses');
+  setTimeout(()=>location.reload(), 2000);
+}
+function togglePilih(namaFile, el){
+  const item = document.getElementById('galeri-'+namaFile);
+  if(el.checked){
+    gambarDipilih.push(namaFile);
+    item.classList.add('selected');
+  } else {
+    gambarDipilih = gambarDipilih.filter(f=>f!=namaFile);
+    item.classList.remove('selected');
+  }
+  updateBtnHapus();
+}
+
+function updateBtnHapus(){
+  const btn = document.getElementById('btn-hapus-pilih');
+  btn.innerText = `🗑️ Hapus Terpilih (${gambarDipilih.length})`;
+  btn.style.display = gambarDipilih.length > 0? 'block' : 'none';
+}
+
+async function hapusGambarPilihan(){
+  if(!confirm(`Yakin hapus ${gambarDipilih.length} gambar terpilih?`)) return;
+  showNotif('⏳ Menghapus...','sukses');
+  const { error } = await db.storage.from('gambar-produk').remove(gambarDipilih);
+  if(error) return showNotif('❌ Gagal: '+error.message,'gagal');
+  showNotif(`✅ ${gambarDipilih.length} gambar dihapus`,'sukses');
+  loadGaleri();
+}
+
+// FUNGSI LAMA
 async function loadDesaAdmin(){
   const {data} = await db.from('setting').select('value').eq('key','desa_terlayani').single();
   if(data && data.value){
@@ -544,7 +720,7 @@ async function simpanSettingPromo(){
     const settingObj = {
       aktif: document.getElementById('promo_aktif').checked,
       minimal: parseInt(document.getElementById('promo_minimal').value) || 100000,
-      tgl_kadaluarsa: document.getElementById('promo_tgl_akhir').value || null,
+      tgl_akhir: document.getElementById('promo_tgl_akhir').value || null,
       biaya_layanan: parseInt(document.getElementById('promo_biaya_layan').value) || 2000,
       ongkir_default: parseInt(document.getElementById('promo_ongkir').value) || 2000,
       gambar_urls: gambar_urls
@@ -559,57 +735,10 @@ async function simpanSettingPromo(){
 async function loadStatistikPromo(){
   const bulanIni = new Date().toISOString().slice(0,7);
   const {data} = await db.from('pesenan').select('jumlah_kupon').like('created_at', bulanIni+'%').gt('jumlah_kupon', 0);
-    let totalKupon = 0;
+  let totalKupon = 0;
   data?.forEach(d=> totalKupon += d.jumlah_kupon);
   document.getElementById('total-kupon-bulan').innerText = totalKupon;
   document.getElementById('total-pesanan-promo').innerText = data?.length || 0;
-}
-
-async function bersihkanGambarNganggur() {
-  if(!confirm('⚠️ YAKIN MAU HAPUS GAMBAR YANG TIDAK DIPAKAI?\n\nFile seng gak ono neng tabel prodak bakal dihapus permanen dari bucket "gambar-produk".\n\nPastikan backup disek!')) return;
-
-  showNotif('⏳ Mengecek gambar nganggur...','sukses');
-  
-  try{
-    // 1. Ambil semua URL dari tabel prodak
-    const { data: produk, error: err1 } = await db.from('prodak').select('gambar_url');
-    if(err1) throw err1;
-    const urlDipakai = new Set(produk.map(p => p.gambar_url).filter(u => u));
-
-    // 2. Ambil semua file dari bucket gambar-produk
-    const { data: files, error: err2 } = await db.storage.from('gambar-produk').list('', { limit: 1000, sortBy: { column: 'name', order: 'asc' } });
-    if(err2) throw err2;
-
-    let dihapus = 0;
-    let total = files.length;
-    let fileNganggur = [];
-
-    // 3. Cek 1 per 1 file
-    for(const file of files) {
-      const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/gambar-produk/${file.name}`;
-      
-      // Nek URL ne gak ono neng tabel prodak = NGANGGUR
-      if(!urlDipakai.has(publicUrl)) {
-        fileNganggur.push(file.name);
-      }
-    }
-
-    if(fileNganggur.length === 0){
-      return showNotif('✅ Aman! Tidak ada gambar nganggur.', 'sukses');
-    }
-
-    if(!confirm(`Ditemukan ${fileNganggur.length} file nganggur.\nContoh: ${fileNganggur.slice(0,3).join(', ')}\n\nLanjut hapus?`)) return;
-
-    // 4. Hapus file nganggur
-    const { error: err3 } = await db.storage.from('gambar-produk').remove(fileNganggur);
-    if(err3) throw err3;
-    dihapus = fileNganggur.length;
-    
-    showNotif(`✅ Selesai! ${dihapus} file nganggur berhasil dihapus.`, 'sukses');
-  }catch(err){
-    showNotif('❌ GAGAL: '+err.message, 'gagal');
-    console.error(err);
-  }
 }
 
 function showNotif(pesan,tipe){
